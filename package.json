@@ -20,8 +20,10 @@
   },
   "homepage": "https://github.com/techcrushProject/RentIt#readme",
   "dependencies": {
+    "cloudinary": "^2.11.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "mongoose": "^9.10.2"
+    "mongoose": "^9.10.2",
+    "multer": "^2.4.0"
   }
 }

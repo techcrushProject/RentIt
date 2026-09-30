@@ -1,5 +1,7 @@
 const express = require("express");
 const connectDB = require("./config/db");
+const categoryRoute = require("./route/categoryRoute");
+const equipmentRoute = require("./route/equipmentRoute");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const baseRoute = require("./route/baseRoute");
 
@@ -12,7 +14,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use("/api", baseRoute);
 
+app.use("/equipment", equipmentRoute);
 
+app.use("/category", categoryRoute);
 app.get("/", (req, res) => {
     res.send("WELCOME TO BACKEND API");
 });
