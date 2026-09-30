@@ -58,3 +58,26 @@ exports.updateClaimStatus = async (req, res, next) => {
     next(error);
   }
 };
+exports.cancelClaim = async (req, res, next) => {
+  try {
+    const claim = await DamageClaim.findById(req.params.id);
+
+    if (!claim) {
+      return res.status(404).json({ success: false, message: "Claim not found" });
+    }
+
+    if (claim.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Only pending claims can be cancelled",
+      });
+    }
+
+    claim.status = "cancelled";
+    await claim.save();
+
+    res.json({ success: true, data: claim });
+  } catch (error) {
+    next(error);
+  }
+};

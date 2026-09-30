@@ -9,7 +9,7 @@ const damageClaimSchema = new mongoose.Schema(
     amountRequested: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "resolved"],
+      enum: ["pending", "approved", "rejected", "resolved", "cancelled"],
       default: "pending",
     },
   },
