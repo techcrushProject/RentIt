@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use("/api", baseRoute);
 
+const damageClaimRoute = require("./route/damageClaimRoute");
+app.use("/api/claims", damageClaimRoute);
+
 
 app.get("/", (req, res) => {
     res.send("WELCOME TO BACKEND API");
