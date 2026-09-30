@@ -1,5 +1,7 @@
 const DamageClaim = require("../model/damageClaimModel");
 const mongoose = require("mongoose");
+const fs = require("fs");
+const path = require("path");
 
 exports.createClaim = async (req, res, next) => {
   try {
@@ -152,6 +154,45 @@ exports.uploadClaimImages = async (req, res, next) => {
     const paths = req.files.map((file) => `/uploads/claims/${file.filename}`);
     claim.images.push(...paths);
     await claim.save();
+
+    res.json({ success: true, data: claim });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteClaimImage = async (req, res, next) => {
+  try {
+    const claim = await DamageClaim.findById(req.params.id);
+
+    if (!claim) {
+      return res.status(404).json({ success: false, message: "Claim not found" });
+    }
+
+    if (claim.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Photos can only be removed from pending claims",
+      });
+    }
+
+    const fileName = path.basename(req.params.filename);
+    const imagePath = `/uploads/claims/${fileName}`;
+
+    if (!claim.images.includes(imagePath)) {
+      return res.status(404).json({
+        success: false,
+        message: "Image not found on this claim",
+      });
+    }
+
+    claim.images = claim.images.filter((img) => img !== imagePath);
+    await claim.save();
+
+    const filePath = path.join(__dirname, "..", "uploads", "claims", fileName);
+    fs.unlink(filePath, (err) => {
+      if (err) console.error("Could not delete file:", err.message);
+    });
 
     res.json({ success: true, data: claim });
   } catch (error) {
