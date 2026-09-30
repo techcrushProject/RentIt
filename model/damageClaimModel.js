@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const damageClaimSchema = new mongoose.Schema(
   {
-    rental: { type: mongoose.Schema.Types.ObjectId, ref: "Rental", required: true },
+    rental: { type: mongoose.Schema.Types.ObjectId, ref: "Booking", required: true },
     claimant: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     description: { type: String, required: true, trim: true, maxlength: 1000 },
     images: [String],
