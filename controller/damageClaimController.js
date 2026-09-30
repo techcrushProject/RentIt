@@ -92,6 +92,12 @@ exports.uploadClaimImages = async (req, res, next) => {
     if (!claim) {
       return res.status(404).json({ success: false, message: "Claim not found" });
     }
+    if (claim.status !== "pending") {
+  return res.status(400).json({
+    success: false,
+    message: "Photos can only be added to pending claims",
+  });
+}
 
     const paths = req.files.map((file) => `/uploads/claims/${file.filename}`);
     claim.images.push(...paths);
