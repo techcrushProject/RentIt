@@ -3,6 +3,7 @@ const connectDB = require("./config/db");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const baseRoute = require("./route/baseRoute");
 
+const path = require("path");
 const app = express();
 console.log("BASE API ROUTE LOADED");
 
@@ -13,6 +14,8 @@ const PORT = process.env.PORT || 3000;
 app.use("/api", baseRoute);
 
 const damageClaimRoute = require("./route/damageClaimRoute");
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/claims", damageClaimRoute);
 
 

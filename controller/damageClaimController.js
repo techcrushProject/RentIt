@@ -81,3 +81,24 @@ exports.cancelClaim = async (req, res, next) => {
     next(error);
   }
 };
+exports.uploadClaimImages = async (req, res, next) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: "Please upload at least one image" });
+    }
+
+    const claim = await DamageClaim.findById(req.params.id);
+
+    if (!claim) {
+      return res.status(404).json({ success: false, message: "Claim not found" });
+    }
+
+    const paths = req.files.map((file) => `/uploads/claims/${file.filename}`);
+    claim.images.push(...paths);
+    await claim.save();
+
+    res.json({ success: true, data: claim });
+  } catch (error) {
+    next(error);
+  }
+};
