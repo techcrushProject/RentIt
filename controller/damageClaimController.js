@@ -41,8 +41,21 @@ exports.createClaim = async (req, res, next) => {
 
 exports.getAllClaims = async (req, res, next) => {
   try {
-    const claims = await DamageClaim.find();
-    res.json({ success: true, data: claims });
+    const validStatuses = ["pending", "approved", "rejected", "resolved", "cancelled"];
+    const filter = {};
+
+    if (req.query.status) {
+      if (!validStatuses.includes(req.query.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "status must be pending, approved, rejected, resolved or cancelled",
+        });
+      }
+      filter.status = req.query.status;
+    }
+
+    const claims = await DamageClaim.find(filter).sort({ createdAt: -1 });
+    res.json({ success: true, count: claims.length, data: claims });
   } catch (error) {
     next(error);
   }
