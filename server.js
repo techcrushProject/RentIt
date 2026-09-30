@@ -1,19 +1,32 @@
 const express = require("express");
+const connectDB = require("./config/db");
+const errorMiddleware = require("./middleware/errorMiddleware");
+const baseRoute = require("./route/baseRoute");
 
+const path = require("path");
 const app = express();
+console.log("BASE API ROUTE LOADED");
+
 app.use(express.json());
-
-
 
 const PORT = process.env.PORT || 3000;
 
+app.use("/api", baseRoute);
+
+const damageClaimRoute = require("./route/damageClaimRoute");
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/api/claims", damageClaimRoute);
+
+
 app.get("/", (req, res) => {
-    res.send("WELCOME TO BACKEND API")
+    res.send("WELCOME TO BACKEND API");
 });
 
+connectDB();
 
-// API ROUTES
+app.use(errorMiddleware);
 
 app.listen(PORT, () => {
     console.log(`Server running on PORT: ${PORT}`);
-})
+});
