@@ -1,5 +1,6 @@
 const express = require("express");
 const upload = require("../middleware/uploadMiddleware");
+const validateId = require("../middleware/validateId");
 const {
   createClaim,
   getAllClaims,
@@ -10,6 +11,7 @@ const {
 } = require("../controller/damageClaimController");
 
 const router = express.Router();
+router.param("id", validateId);
 
 router.post("/", createClaim);
 router.get("/", getAllClaims);

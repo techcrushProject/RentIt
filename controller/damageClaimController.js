@@ -1,8 +1,38 @@
 const DamageClaim = require("../model/damageClaimModel");
+const mongoose = require("mongoose");
 
 exports.createClaim = async (req, res, next) => {
   try {
-    const claim = await DamageClaim.create(req.body);
+    const { rental, claimant, description, amountRequested } = req.body;
+
+    if (!rental || !claimant || !description || amountRequested === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "rental, claimant, description and amountRequested are required",
+      });
+    }
+
+    if (!mongoose.isValidObjectId(rental) || !mongoose.isValidObjectId(claimant)) {
+      return res.status(400).json({
+        success: false,
+        message: "rental and claimant must be valid IDs",
+      });
+    }
+
+    if (typeof amountRequested !== "number" || amountRequested <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "amountRequested must be a number greater than 0",
+      });
+    }
+
+    const claim = await DamageClaim.create({
+      rental,
+      claimant,
+      description,
+      amountRequested,
+    });
+
     res.status(201).json({ success: true, data: claim });
   } catch (error) {
     next(error);
@@ -17,6 +47,7 @@ exports.getAllClaims = async (req, res, next) => {
     next(error);
   }
 };
+
 exports.getClaimById = async (req, res, next) => {
   try {
     const claim = await DamageClaim.findById(req.params.id);
@@ -58,6 +89,7 @@ exports.updateClaimStatus = async (req, res, next) => {
     next(error);
   }
 };
+
 exports.cancelClaim = async (req, res, next) => {
   try {
     const claim = await DamageClaim.findById(req.params.id);
@@ -81,10 +113,14 @@ exports.cancelClaim = async (req, res, next) => {
     next(error);
   }
 };
+
 exports.uploadClaimImages = async (req, res, next) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ success: false, message: "Please upload at least one image" });
+      return res.status(400).json({
+        success: false,
+        message: "Please upload at least one image",
+      });
     }
 
     const claim = await DamageClaim.findById(req.params.id);
@@ -92,12 +128,13 @@ exports.uploadClaimImages = async (req, res, next) => {
     if (!claim) {
       return res.status(404).json({ success: false, message: "Claim not found" });
     }
+
     if (claim.status !== "pending") {
-  return res.status(400).json({
-    success: false,
-    message: "Photos can only be added to pending claims",
-  });
-}
+      return res.status(400).json({
+        success: false,
+        message: "Photos can only be added to pending claims",
+      });
+    }
 
     const paths = req.files.map((file) => `/uploads/claims/${file.filename}`);
     claim.images.push(...paths);
