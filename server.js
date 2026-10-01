@@ -1,21 +1,23 @@
-
 const express = require("express");
 const connectDB = require("./config/db");
 const categoryRoute = require("./route/categoryRoute");
 const equipmentRoute = require("./route/equipmentRoute");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const baseRoute = require("./route/baseRoute");
+const cors = require("cors");
+const authRoutes = require("./Routes/authRoutes.js");
+
 
 connectDb();
 
 const app = express();
-console.log("BASE API ROUTE LOADED");
 
 app.use(express.json());
+app.use(cors());
+app.use("/api/auth", authRoutes);
+app.use("/api", baseRoute);
 
 const PORT = process.env.PORT || 3000;
-
-app.use("/api", baseRoute);
 
 
 // API ROUTES
