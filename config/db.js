@@ -1,7 +1,8 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const connectDB = async() => {
     const MONGO_URL = "mongodb://localhost:27017/"
+
     try {
         await mongoose.connect(MONGO_URL);
         console.log("Database connection successful")
@@ -10,4 +11,5 @@ const connectDB = async() => {
         process.exit();
     }
 };
-module.exports = connectDB;
+
+export default connectDB;
