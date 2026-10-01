@@ -26,16 +26,61 @@ const equipmentSchema = new mongoose.Schema(
       required: true,
     },
 
+    brand: {
+      type: String,
+      trim: true,
+    },
+
+    model: {
+      type: String,
+      trim: true,
+    },
+
+    condition: {
+      type: String,
+      enum: ["Brand New", "Fairly Used"],
+      trim: true,
+    },
+
+    additionalInformation: {
+      type: String,
+      trim: true,
+    },
+
     pricePerDay: {
       type: Number,
       required: true,
       min: 0,
     },
 
+    rentalDeposit: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    rentalRules: {
+      type: String,
+      trim: true,
+    },
+
     location: {
       type: String,
       required: true,
       trim: true,
+    },
+
+    availableDate: {
+      type: Date,
+    },
+
+    unavailableDate: {
+      type: Date,
+    },
+
+    handoverMethod: {
+      type: String,
+      enum: ["Pickup", "Delivery"],
     },
 
     images: [
@@ -47,6 +92,12 @@ const equipmentSchema = new mongoose.Schema(
     availability: {
       type: Boolean,
       default: true,
+    },
+
+    status: {
+      type: String,
+      enum: ["submitted", "published", "rented", "unavailable"],
+      default: "submitted",
     },
   },
   {
