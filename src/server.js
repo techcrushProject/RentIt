@@ -4,7 +4,6 @@ import connectDB from "./config/db.js";
 import testEquipmentRoutes from "./routes/testEquipmentRoutes.js";
 import availabilityRoutes from "./routes/availabilityRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
-import analyticsRoutes from "./routes/analyticsRoutes.js";
 
 const app = express();
 app.use(express.json());
@@ -27,8 +26,6 @@ app.use("/api/test/equipment", testEquipmentRoutes);
 app.use("/api/equipment", availabilityRoutes);
 
 app.use("/api/bookings", bookingRoutes);
-
-app.use("/api/analytics", analyticsRoutes);
 
 //START SERVER
 
