@@ -2,7 +2,7 @@ import express from "express";
 import {
   createTestEquipment,
   addUnavailablePeriod,
-} from "../src/controllers/testEquipmentController.js";
+} from "../controllers/testEquipmentController.js";
 
 const router = express.Router();
 

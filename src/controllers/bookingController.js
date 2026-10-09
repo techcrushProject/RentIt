@@ -11,7 +11,7 @@ import {
   checkEquipmentAvailability,
 } from "../services/availabilityService.js";
 
-//CREATE BOOKING
+// CREATE BOOKING
 export const createBooking = async (req, res) => {
   try {
     const {
@@ -21,9 +21,7 @@ export const createBooking = async (req, res) => {
       endDate,
     } = req.body;
 
-
-    // 1. Check required fields
-
+    // 1. Validate required fields
     if (
       !renterId ||
       !equipmentId ||
@@ -36,9 +34,7 @@ export const createBooking = async (req, res) => {
       });
     }
 
-
-    // 2. Validate MongoDB IDs
-
+    // 2. Validate IDs
     if (!mongoose.Types.ObjectId.isValid(renterId)) {
       return res.status(400).json({
         message: "Invalid renter ID",
@@ -51,14 +47,9 @@ export const createBooking = async (req, res) => {
       });
     }
 
-
-    // 3. Convert date strings into JavaScript Dates
-
+    // 3. Parse and validate dates
     const parsedStartDate = parseDate(startDate);
     const parsedEndDate = parseDate(endDate);
-
-
-    // 4. Validate the requested date range
 
     const dateValidation = validateDateRange(
       parsedStartDate,
@@ -71,25 +62,19 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    // 4. Check equipment availability.
+    // Pending requests do not block other requests.
+    const availability = await checkEquipmentAvailability({
+      equipmentId,
+      startDate: parsedStartDate,
+      endDate: parsedEndDate,
+    });
 
-    // 5. Check whether the equipment is available
-
-    const availability =
-      await checkEquipmentAvailability({
-        equipmentId,
-        startDate: parsedStartDate,
-        endDate: parsedEndDate,
-      });
-
-
-    if (
-      availability.reason === "EQUIPMENT_NOT_FOUND"
-    ) {
+    if (availability.reason === "EQUIPMENT_NOT_FOUND") {
       return res.status(404).json({
         message: availability.message,
       });
     }
-
 
     if (!availability.available) {
       return res.status(409).json({
@@ -98,50 +83,30 @@ export const createBooking = async (req, res) => {
       });
     }
 
-
-    // 6. Get the equipment returned by
-    // the availability service
-
     const equipment = availability.equipment;
 
-
-    // 7. Prevent owner from booking own equipment
-
+    // 5. Prevent owners from renting their own equipment
     if (
-      equipment.ownerId.toString() ===
-      renterId.toString()
+      equipment.ownerId.toString() === renterId.toString()
     ) {
       return res.status(400).json({
-        message:
-          "You cannot book your own equipment",
+        message: "You cannot book your own equipment",
       });
     }
 
-
-    // 8. Calculate rental duration
-
+    // 6. Calculate rental price
     const rentalDays = calculateRentalDays(
       parsedStartDate,
       parsedEndDate
     );
 
-
-    // 9. Calculate pricing
-
     const pricePerDay = equipment.pricePerDay;
+    const rentalAmount = pricePerDay * rentalDays;
+    const securityDeposit = equipment.securityDeposit;
+    const totalAmount = rentalAmount + securityDeposit;
 
-    const rentalAmount =
-      pricePerDay * rentalDays;
-
-    const securityDeposit =
-      equipment.securityDeposit;
-
-    const totalAmount =
-      rentalAmount + securityDeposit;
-
-
-    // 10. Create the booking
-
+    // 7. Create booking.
+    // Payment must be verified before owner approval.
     const booking = await Booking.create({
       renterId,
 
@@ -164,86 +129,150 @@ export const createBooking = async (req, res) => {
       totalAmount,
 
       status: "pending",
-    });
 
+      paymentStatus: "pending",
+
+      refundStatus: "not_required",
+    });
 
     return res.status(201).json({
       message:
-        "Booking request created successfully",
-
+        "Booking request created. Complete payment before the owner can approve it.",
       booking,
     });
-
   } catch (error) {
+    console.error("Create booking error:", error);
+
     return res.status(500).json({
       message: "Failed to create booking",
-      error: error.message,
     });
   }
 };
 
-//APPROVE BOOKING
+// APPROVE BOOKING
 export const approveBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+
+  let approvedBooking;
+
   try {
     const { bookingId } = req.params;
 
-    // 1. Validate booking ID
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
       return res.status(400).json({
         message: "Invalid booking ID",
       });
     }
 
-    // 2. Find booking
-    const booking = await Booking.findById(bookingId);
+    await session.withTransaction(async () => {
+      // 1. Load booking inside the transaction
+      const booking = await Booking.findById(bookingId)
+        .session(session);
 
-    if (!booking) {
+      if (!booking) {
+        throw new Error("BOOKING_NOT_FOUND");
+      }
+
+      // 2. Only pending bookings may be approved
+      if (booking.status !== "pending") {
+        throw new Error("BOOKING_NOT_PENDING");
+      }
+
+      // 3. Payment must have been verified by the
+      // payment provider/webhook before approval.
+      if (booking.paymentStatus !== "succeeded") {
+        throw new Error("PAYMENT_NOT_COMPLETED");
+      }
+
+      // 4. Check for an existing booking that has
+      // already claimed these rental dates.
+      const conflictingBooking = await Booking.findOne({
+        _id: { $ne: booking._id },
+        equipmentId: booking.equipmentId,
+        status: {
+          $in: ["approved", "picked_up", "active"],
+        },
+        startDate: { $lte: booking.endDate },
+        endDate: { $gte: booking.startDate },
+      }).session(session);
+
+      if (conflictingBooking) {
+        throw new Error("BOOKING_CONFLICT");
+      }
+
+      // 5. Approve the winning booking
+      booking.status = "approved";
+
+      await booking.save({ session });
+
+      // 6. Find competing paid pending requests.
+      // Only overlapping dates for the same equipment
+      // should be affected.
+      const competingBookings = await Booking.find({
+        _id: { $ne: booking._id },
+        equipmentId: booking.equipmentId,
+        status: "pending",
+        paymentStatus: "succeeded",
+        startDate: { $lte: booking.endDate },
+        endDate: { $gte: booking.startDate },
+      }).session(session);
+
+      // 7. Reject competing requests and record
+      // that their payments require refunds.
+      for (const competingBooking of competingBookings) {
+        competingBooking.status = "rejected";
+        competingBooking.refundStatus = "pending";
+
+        await competingBooking.save({ session });
+      }
+
+      approvedBooking = booking;
+    });
+
+    return res.status(200).json({
+      message:
+        "Booking approved. Competing paid requests have been marked for refund.",
+      booking: approvedBooking,
+    });
+  } catch (error) {
+    if (error.message === "BOOKING_NOT_FOUND") {
       return res.status(404).json({
         message: "Booking not found",
       });
     }
 
-    // 3. Only pending bookings can be approved
-    if (booking.status !== "pending") {
+    if (error.message === "BOOKING_NOT_PENDING") {
       return res.status(400).json({
-        message: `Booking cannot be approved because its current status is ${booking.status}`,
+        message: "Only pending bookings can be approved",
       });
     }
 
-    // 4. Check availability again
-    const availability = await checkEquipmentAvailability({
-      equipmentId: booking.equipmentId,
-      startDate: booking.startDate,
-      endDate: booking.endDate,
-      excludeBookingId: booking._id,
-    });
+    if (error.message === "PAYMENT_NOT_COMPLETED") {
+      return res.status(400).json({
+        message:
+          "Booking cannot be approved because payment has not been completed",
+      });
+    }
 
-    if (!availability.available) {
+    if (error.message === "BOOKING_CONFLICT") {
       return res.status(409).json({
         message:
-          "Booking cannot be approved because the equipment is no longer available for these dates",
-        reason: availability.reason,
+          "The equipment has already been approved for overlapping dates",
+        reason: "BOOKING_CONFLICT",
       });
     }
 
-    // 5. Approve booking
-    booking.status = "approved";
+    console.error("Approve booking error:", error);
 
-    await booking.save();
-
-    return res.status(200).json({
-      message: "Booking approved successfully",
-      booking,
-    });
-  } catch (error) {
     return res.status(500).json({
       message: "Failed to approve booking",
-      error: error.message,
     });
+  } finally {
+    await session.endSession();
   }
 };
 
-//REJECT BOOKING
+// REJECT BOOKING
 export const rejectBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -264,27 +293,37 @@ export const rejectBooking = async (req, res) => {
 
     if (booking.status !== "pending") {
       return res.status(400).json({
-        message: `Booking cannot be rejected because its current status is ${booking.status}`,
+        message:
+          `Booking cannot be rejected because its current status is ${booking.status}`,
       });
     }
 
     booking.status = "rejected";
 
+    // A successfully paid booking needs a refund.
+    if (booking.paymentStatus === "succeeded") {
+      booking.refundStatus = "pending";
+    }
+
     await booking.save();
 
     return res.status(200).json({
-      message: "Booking rejected successfully",
+      message:
+        booking.refundStatus === "pending"
+          ? "Booking rejected. Refund processing is required."
+          : "Booking rejected successfully.",
       booking,
     });
   } catch (error) {
+    console.error("Reject booking error:", error);
+
     return res.status(500).json({
       message: "Failed to reject booking",
-      error: error.message,
     });
   }
 };
 
-//CANCEL BOOKING
+// CANCEL BOOKING
 export const cancelBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -311,28 +350,37 @@ export const cancelBooking = async (req, res) => {
 
     if (!cancellableStatuses.includes(booking.status)) {
       return res.status(400).json({
-        message: `Booking cannot be cancelled because its current status is ${booking.status}`,
+        message:
+          `Booking cannot be cancelled because its current status is ${booking.status}`,
       });
     }
 
     booking.status = "cancelled";
     booking.cancellationReason = reason || null;
 
+    if (booking.paymentStatus === "succeeded") {
+      booking.refundStatus = "pending";
+    }
+
     await booking.save();
 
     return res.status(200).json({
-      message: "Booking cancelled successfully",
+      message:
+        booking.refundStatus === "pending"
+          ? "Booking cancelled. Refund processing is required."
+          : "Booking cancelled successfully.",
       booking,
     });
   } catch (error) {
+    console.error("Cancel booking error:", error);
+
     return res.status(500).json({
       message: "Failed to cancel booking",
-      error: error.message,
     });
   }
 };
 
-//GET BOOKING BY ID
+// GET BOOKING BY ID
 export const getBookingById = async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -356,14 +404,15 @@ export const getBookingById = async (req, res) => {
       booking,
     });
   } catch (error) {
+    console.error("Get booking error:", error);
+
     return res.status(500).json({
       message: "Failed to retrieve booking",
-      error: error.message,
     });
   }
 };
 
-//GET ALL BOOKINGS
+// GET ALL BOOKINGS
 export const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -375,9 +424,10 @@ export const getAllBookings = async (req, res) => {
       bookings,
     });
   } catch (error) {
+    console.error("Get all bookings error:", error);
+
     return res.status(500).json({
       message: "Failed to retrieve bookings",
-      error: error.message,
     });
   }
 };
