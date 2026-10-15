@@ -26,11 +26,40 @@ const userSchema = new mongoose.Schema({
         enum: ["renter", "owner", "admin"],
         default: "renter",
     },
+    phone: {
+        type: String,
+        trim: true,
+    },
+    address: {
+        type: String,
+        trim: true,
+    },
+    kycStatus: {
+        type: String,
+        enum: ["not_submitted", "under_review", "verified", "rejected", "resubmit"],
+        default: "not_submitted",
+    },
+    kycDetails: {
+        idType: String,
+        idNumber: String,
+        documentUrl: String,
+        selfieUrl: String,
+        address: String,
+        submittedAt: Date,
+    },
+    kycRejectionReason: {
+        type: String,
+        default: "",
+    },
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
 },
 {
     timestamps: true,
 });
 
-const User = mongoose.model("user", userSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 export default User;

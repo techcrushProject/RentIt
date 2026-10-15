@@ -1,14 +1,21 @@
-import User from "../models/User.js";
+import User from "../Models/user.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body;
+        const requestedRole = req.body.role || "renter";
 
         if (!name || !email || !password) {
             return res.status(400).json({
                 message: "Name, email and password are required"
+            });
+        }
+
+        if (!["renter", "owner"].includes(requestedRole)) {
+            return res.status(400).json({
+                message: "Registration role must be renter or owner"
             });
         }
 
@@ -26,7 +33,7 @@ const registerUser = async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role: "renter"
+            role: requestedRole
         });
 
         await user.save();

@@ -4,6 +4,8 @@ import connectDB from "./config/db.js";
 import cors from "cors";
 
 import authRoutes from "./Routes/authRoutes.js";
+import adminRoutes from "./Routes/adminRoutes.js";
+import kycRoutes from "./Routes/kycRoutes.js";
 
 const app = express();
 
@@ -12,6 +14,8 @@ connectDB();
 app.use(express.json());
 app.use(cors());
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/kyc", kycRoutes);
 
 
 

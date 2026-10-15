@@ -28,5 +28,5 @@ const protect = async (req, res, next) => {
         });
     }
 };
-
+export const verifyToken = protect;
 export default protect;
