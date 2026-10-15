@@ -57,7 +57,7 @@ All endpoints are relative to the server base URL. Request and response bodies u
 
 | Method | Path | Access | Description |
 | --- | --- | --- | --- |
-| `POST` | `/register` | Public | Register as a renter (default) or owner. Requires `name`, `email`, and `password`; optional `role`. |
+| `POST` | `/register` | Public | Register as a renter (default) or owner. Requires `name`, `email`, and `password`; accepts `role`, `firstName`, `lastName`, `businessName`, and `phone`. |
 | `POST` | `/login` | Public | Log in with `email` and `password`; returns a JWT and user details. |
 | `POST` | `/setup-admin` | Public, one-time | Create the first admin account. Requires `name`, `email`, and `password`; fails if an admin already exists. |
 | `GET` | `/me` | Authenticated | Return the logged-in user's token data. |
@@ -71,7 +71,13 @@ All endpoints are relative to the server base URL. Request and response bodies u
 | Method | Path | Access | Description |
 | --- | --- | --- | --- |
 | `GET` | `/me` | Authenticated | Get the current user's KYC record. |
-| `POST` | `/` | Authenticated renter or owner | Submit KYC. Requires `documentType`, `documentNumber`, `documentUrl`, and `selfieUrl`; optional `address`. |
+| `POST` | `/` | Authenticated renter or owner | Submit KYC. Requires `documentType`, `documentNumber`, JPEG/PNG/WebP data URLs in `documentUrl` and `selfieUrl`; optional `address`. |
+
+### Equipment (`/api/equipment`)
+
+| Method | Path | Access | Description |
+| --- | --- | --- | --- |
+| `POST` | `/` | Authenticated owner | Create a pending equipment listing. Requires `title` and positive `price`; accepts `description`, `category`, `condition`, `location`, `specs`, and an optional `image` data URL. |
 
 ### Admin (`/api/admin`)
 
@@ -80,6 +86,8 @@ All endpoints are relative to the server base URL. Request and response bodies u
 | `GET` | `/kyc` | Admin | List KYC submissions. |
 | `PUT` | `/verify-user/:id` | Admin | Set KYC status to `verified`, `rejected`, or `resubmit`. Optional body fields: `status` (defaults to `verified`) and `rejectionReason`. |
 | `PUT` | `/equipment/:id/approve` | Admin | Approve an equipment listing. |
+
+The onboarding page defaults to `http://localhost:3000/api`. Start the API from this folder with `npm start`, then open `Onboarding/index.html` from the frontend workspace. KYC images are currently stored as data URLs in MongoDB to support local onboarding without a cloud-storage dependency; use private object storage with access controls before production deployment.
 
 ## Project Structure
 

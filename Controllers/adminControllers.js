@@ -7,6 +7,10 @@ export const submitKyc = async (req, res) => {
         if (!documentType || !documentNumber || !documentUrl || !selfieUrl) {
             return res.status(400).json({ message: "Document type, number, ID image and selfie are required" });
         }
+        const imageDataUrl = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+        if (!imageDataUrl.test(documentUrl) || !imageDataUrl.test(selfieUrl)) {
+            return res.status(400).json({ message: "ID and selfie must be JPEG, PNG, or WebP images" });
+        }
 
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: "User not found" });

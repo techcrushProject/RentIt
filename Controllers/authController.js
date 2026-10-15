@@ -4,7 +4,8 @@ import jwt from "jsonwebtoken";
 
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, firstName, lastName, businessName, phone, password } = req.body;
+        const email = String(req.body.email || "").trim().toLowerCase();
         const requestedRole = req.body.role || "renter";
 
         if (!name || !email || !password) {
@@ -31,9 +32,13 @@ const registerUser = async (req, res) => {
 
         const user = new User({
             name,
+            firstName,
+            lastName,
+            businessName,
             email,
             password: hashedPassword,
-            role: requestedRole
+            role: requestedRole,
+            phone
         });
 
         await user.save();
@@ -53,7 +58,8 @@ const registerUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const email = String(req.body.email || "").trim().toLowerCase();
+        const { password } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({
@@ -97,7 +103,11 @@ const loginUser = async (req, res) => {
             user: {
                 id: user._id,
                 name: user.name,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                businessName: user.businessName,
                 email: user.email,
+                phone: user.phone,
                 role: user.role
             }
         });
