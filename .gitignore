@@ -1,2 +1,11 @@
-/node_modules
+node_modules/
+
+# Secrets: keep the template, ignore every real env file.
 .env
+.env.*
+!.env.example
+
+coverage/
+*.log
+.DS_Store
+uploads/

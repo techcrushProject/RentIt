@@ -1,5 +1,5 @@
 import express from "express";
-import { getMyKyc, submitKyc } from "../Controllers/adminControllers.js";
+import { getMyKyc, submitKyc } from "../Controllers/kycController.js";
 import protect from "../Middleware/authMiddleware.js";
 import authorizeRoles from "../Middleware/roleMiddleware.js";
 
