@@ -23,7 +23,7 @@ const createEquipment = async (req, res) => {
 const getAllEquipment = async (req, res) => {
   try {
     const equipment = await equipmentModel
-      .find()
+      .find(req.query.status ? { status: req.query.status } : {})
       .populate("category");
 
     res.status(200).json({
