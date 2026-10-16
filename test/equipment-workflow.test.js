@@ -44,6 +44,8 @@ const startApi = async records => {
   app.use(express.json());
   app.use("/equipment", equipmentRoutes);
   app.use("/admin/equipment", adminEquipmentRoutes);
+  app.use("/api/equipment", equipmentRoutes);
+  app.use("/api/admin/equipment", adminEquipmentRoutes);
   const server = app.listen(0);
   await new Promise(resolve => server.once("listening", resolve));
 
@@ -73,7 +75,7 @@ test("owner submission starts pending, is visible to admin, and review feedback 
   const categoryId = fixtureId();
   const api = await startApi(records);
   try {
-    const created = await request(api.baseUrl, "/equipment/create", {
+    const created = await request(api.baseUrl, "/api/equipment", {
       method: "POST",
       token: tokenFor(ownerId, "owner"),
       body: {
@@ -89,11 +91,11 @@ test("owner submission starts pending, is visible to admin, and review feedback 
     assert.equal(created.body.equipment.status, "pending");
     assert.equal(created.body.equipment.owner, ownerId);
 
-    const adminQueue = await request(api.baseUrl, "/admin/equipment", { token: tokenFor(adminId, "admin") });
+    const adminQueue = await request(api.baseUrl, "/api/admin/equipment", { token: tokenFor(adminId, "admin") });
     assert.equal(adminQueue.status, 200);
     assert.equal(adminQueue.body.equipment[0]._id, created.body.equipment._id);
 
-    const decision = await request(api.baseUrl, `/admin/equipment/${created.body.equipment._id}/review`, {
+    const decision = await request(api.baseUrl, `/api/admin/equipment/${created.body.equipment._id}/review`, {
       method: "PUT",
       token: tokenFor(adminId, "admin"),
       body: { status: "rejected", reviewNote: "Please provide clearer photos" },
@@ -101,7 +103,7 @@ test("owner submission starts pending, is visible to admin, and review feedback 
     assert.equal(decision.status, 200);
     assert.equal(decision.body.ownerResponse.message, "Please provide clearer photos");
 
-    const ownerListings = await request(api.baseUrl, "/equipment/mine", { token: tokenFor(ownerId, "owner") });
+    const ownerListings = await request(api.baseUrl, "/api/equipment/mine", { token: tokenFor(ownerId, "owner") });
     assert.equal(ownerListings.status, 200);
     assert.equal(ownerListings.body.equipment[0].status, "rejected");
     assert.equal(ownerListings.body.equipment[0].reviewNote, "Please provide clearer photos");
@@ -119,7 +121,7 @@ test("only approved and available equipment appears in the renter Explore feed",
   ];
   const api = await startApi(records);
   try {
-    const result = await request(api.baseUrl, "/equipment/explore");
+    const result = await request(api.baseUrl, "/api/equipment");
     assert.equal(result.status, 200);
     assert.deepEqual(result.body.equipment.map(item => item._id), [records[3]._id]);
   } finally {
@@ -130,9 +132,9 @@ test("only approved and available equipment appears in the renter Explore feed",
 test("listing review routes enforce owner and admin roles", async () => {
   const api = await startApi([]);
   try {
-    assert.equal((await request(api.baseUrl, "/equipment/mine")).status, 401);
-    assert.equal((await request(api.baseUrl, "/admin/equipment", { token: tokenFor(fixtureId(), "owner") })).status, 403);
-    assert.equal((await request(api.baseUrl, "/equipment/create", {
+    assert.equal((await request(api.baseUrl, "/api/equipment/mine")).status, 401);
+    assert.equal((await request(api.baseUrl, "/api/admin/equipment", { token: tokenFor(fixtureId(), "owner") })).status, 403);
+    assert.equal((await request(api.baseUrl, "/api/equipment", {
       method: "POST",
       token: tokenFor(fixtureId(), "renter"),
       body: {},

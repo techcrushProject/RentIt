@@ -17,6 +17,10 @@ const authorizeRoles = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
+// API-base aliases used by the owner and renter dashboards.
+router.get("/", getPublishedEquipment);
+router.post("/", protect, authorizeRoles("owner"), createEquipment);
+
 router.post("/create", protect, authorizeRoles("owner"), createEquipment);
 
 router.get("/getall", getAllEquipment);

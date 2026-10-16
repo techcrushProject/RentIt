@@ -17,6 +17,8 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 app.use("/api", baseRoute);
+app.use("/api/equipment", equipmentRoute);
+app.use("/api/admin/equipment", adminEquipmentRoute);
 app.use("/equipment", equipmentRoute);
 app.use("/admin/equipment", adminEquipmentRoute);
 app.use("/category", categoryRoute);
