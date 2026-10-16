@@ -6,17 +6,18 @@ const equipmentModel = require("../model/equipmentModel");
 const createEquipment = async (req, res) => {
   try {
     const {
-      name, description, category, brand, model, condition,
-      additionalInformation, pricePerDay, rentalDeposit, rentalRules,
+      name, title, description, category, brand, model, condition,
+      additionalInformation, pricePerDay, price, rentalDeposit, rentalRules,
       location, availableDate, unavailableDate, handoverMethod, images,
     } = req.body;
 
     const owner = req.user.id;
-    if (!name || !description || !location || !mongoose.Types.ObjectId.isValid(category) || !mongoose.Types.ObjectId.isValid(owner)) {
+    const equipmentName = String(name || title || "").trim();
+    const dailyPrice = Number(pricePerDay ?? price);
+    if (!equipmentName || !description || !location || !mongoose.Types.ObjectId.isValid(category) || !mongoose.Types.ObjectId.isValid(owner)) {
       return res.status(400).json({ message: "Name, description, category, and location are required" });
     }
-    const price = Number(pricePerDay);
-    if (!Number.isFinite(price) || price <= 0) {
+    if (!Number.isFinite(dailyPrice) || dailyPrice <= 0) {
       return res.status(400).json({ message: "pricePerDay must be a positive number" });
     }
     if (images !== undefined && (!Array.isArray(images) || images.length > 5)) {
@@ -24,8 +25,8 @@ const createEquipment = async (req, res) => {
     }
 
     const equipment = await equipmentModel.create({
-      name, description, category, owner, brand, model, condition,
-      additionalInformation, pricePerDay: price,
+      name: equipmentName, description, category, owner, brand, model, condition,
+      additionalInformation, pricePerDay: dailyPrice,
       rentalDeposit: Math.max(0, Number(rentalDeposit) || 0),
       rentalRules, location, availableDate, unavailableDate, handoverMethod,
       images: images || [],

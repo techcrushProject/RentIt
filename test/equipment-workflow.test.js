@@ -79,15 +79,17 @@ test("owner submission starts pending, is visible to admin, and review feedback 
       method: "POST",
       token: tokenFor(ownerId, "owner"),
       body: {
-        name: "Workflow camera",
+        title: "Workflow camera",
         description: "Camera for listing workflow",
         category: categoryId,
         owner: fixtureId(),
         location: "Test City",
-        pricePerDay: 25,
+        price: 25,
       },
     });
     assert.equal(created.status, 201);
+    assert.equal(created.body.equipment.name, "Workflow camera");
+    assert.equal(created.body.equipment.pricePerDay, 25);
     assert.equal(created.body.equipment.status, "pending");
     assert.equal(created.body.equipment.owner, ownerId);
 

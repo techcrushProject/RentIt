@@ -6,7 +6,7 @@ All routes below are mounted by `server.js`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/equipment` | Owner JWT required. Create a listing in `pending` status. The request must include `name`, `description`, `category`, `location`, and positive `pricePerDay`. The owner ID comes from the token; admin review fields and status are set by the server. `/equipment/create` remains as a legacy alias. |
+| `POST` | `/api/equipment` | Owner JWT required. Create a listing in `pending` status. The request must include `name` (or `title`), `description`, a category ObjectId, `location`, and positive `pricePerDay` (or `price`). The owner ID comes from the token; admin review fields and status are set by the server. `/equipment/create` remains as a legacy alias. |
 | `GET` | `/api/equipment/mine` | Owner JWT required. Return only the signed-in owner's listings, including `status`, `reviewNote`, and `reviewedAt`. The owner dashboard reads the saved review decision here. |
 
 ## Admin equipment listing section
