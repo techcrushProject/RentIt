@@ -3,6 +3,8 @@ const express = require("express");
 const {
   createEquipment,
   getAllEquipment,
+  getPublishedEquipment,
+  getOwnerEquipment,
   getOneEquipment,
   updateEquipment,
   deleteEquipment,
@@ -16,6 +18,10 @@ const router = express.Router();
 router.post("/create", createEquipment);
 
 router.get("/getall", getAllEquipment);
+
+router.get("/explore", getPublishedEquipment);
+
+router.get("/owner/:ownerId", getOwnerEquipment);
 
 router.get("/getone/:id", getOneEquipment);
 

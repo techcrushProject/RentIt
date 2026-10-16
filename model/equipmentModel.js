@@ -94,16 +94,29 @@ const equipmentSchema = new mongoose.Schema(
       default: true,
     },
 
+    reviewNote: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    reviewedAt: {
+      type: Date,
+    },
+
     status: {
       type: String,
-      enum: ["submitted", "published", "rented", "unavailable"],
-      default: "submitted",
+      enum: ["pending", "approved", "rejected", "submitted", "published", "rented", "unavailable"],
+      default: "pending",
     },
   },
   {
     timestamps: true,
   }
 );
+
+equipmentSchema.index({ status: 1, availability: 1, createdAt: -1 });
+equipmentSchema.index({ owner: 1, createdAt: -1 });
 
 const equipmentModel = mongoose.model("Equipment", equipmentSchema);
 

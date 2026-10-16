@@ -3,6 +3,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const categoryRoute = require("./route/categoryRoute");
 const equipmentRoute = require("./route/equipmentRoute");
+const adminEquipmentRoute = require("./route/adminEquipmentRoute");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const baseRoute = require("./route/baseRoute");
 
@@ -17,6 +18,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use("/api", baseRoute);
 app.use("/equipment", equipmentRoute);
+app.use("/admin/equipment", adminEquipmentRoute);
 app.use("/category", categoryRoute);
 
 app.get("/", (req, res) => {

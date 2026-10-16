@@ -5,7 +5,34 @@ const equipmentModel = require("../model/equipmentModel");
 // CREATE EQUIPMENT
 const createEquipment = async (req, res) => {
   try {
-    const equipment = await equipmentModel.create(req.body);
+    const {
+      name, description, category, owner, brand, model, condition,
+      additionalInformation, pricePerDay, rentalDeposit, rentalRules,
+      location, availableDate, unavailableDate, handoverMethod, images,
+    } = req.body;
+
+    if (!name || !description || !location || !mongoose.Types.ObjectId.isValid(category) || !mongoose.Types.ObjectId.isValid(owner)) {
+      return res.status(400).json({ message: "Name, description, category, owner, and location are required" });
+    }
+    const price = Number(pricePerDay);
+    if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({ message: "pricePerDay must be a positive number" });
+    }
+    if (images !== undefined && (!Array.isArray(images) || images.length > 5)) {
+      return res.status(400).json({ message: "Images must be an array containing no more than five URLs" });
+    }
+
+    const equipment = await equipmentModel.create({
+      name, description, category, owner, brand, model, condition,
+      additionalInformation, pricePerDay: price,
+      rentalDeposit: Math.max(0, Number(rentalDeposit) || 0),
+      rentalRules, location, availableDate, unavailableDate, handoverMethod,
+      images: images || [],
+      availability: true,
+      status: "pending",
+      reviewNote: "",
+      reviewedAt: undefined,
+    });
 
     res.status(201).json({
       message: "Equipment created successfully",
@@ -19,12 +46,93 @@ const createEquipment = async (req, res) => {
   }
 };
 
+// Renter Explore feed: only equipment that an admin approved and the owner
+// currently marks as available is published here.
+const getPublishedEquipment = async (req, res) => {
+  try {
+    const equipment = await equipmentModel
+      .find({ status: "approved", availability: true })
+      .populate("category")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ equipment });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to load available equipment", error: error.message });
+  }
+};
+
+// Owner dashboard: return only the signed-in owner's records, including the
+// saved admin decision and feedback. The auth layer can set req.user.id; the
+// ownerId query parameter is retained for the current branch's unauthenticated API.
+const getOwnerEquipment = async (req, res) => {
+  try {
+    const ownerId = req.user?.id || req.params.ownerId || req.query.ownerId;
+    if (!mongoose.Types.ObjectId.isValid(ownerId)) {
+      return res.status(400).json({ message: "A valid ownerId is required" });
+    }
+    const equipment = await equipmentModel
+      .find({ owner: ownerId })
+      .populate("category")
+      .sort({ createdAt: -1 });
+    return res.status(200).json({ equipment });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to load owner equipment", error: error.message });
+  }
+};
+
+// Admin dashboard queue: includes pending, approved, and rejected listings.
+const getAdminEquipment = async (req, res) => {
+  try {
+    const filter = req.query.status ? { status: req.query.status } : {};
+    const equipment = await equipmentModel
+      .find(filter)
+      .populate("category")
+      .sort({ createdAt: -1 });
+    return res.status(200).json({ equipment });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to load admin equipment listings", error: error.message });
+  }
+};
+
+const reviewEquipment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const status = String(req.body.status || "").toLowerCase();
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid equipment ID" });
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Status must be approved or rejected" });
+    }
+
+    const equipment = await equipmentModel.findById(id);
+    if (!equipment) return res.status(404).json({ message: "Equipment not found" });
+
+    equipment.status = status;
+    equipment.availability = status === "approved";
+    equipment.reviewNote = String(req.body.reviewNote || "").trim();
+    equipment.reviewedAt = new Date();
+    await equipment.save();
+
+    return res.status(200).json({
+      message: `Equipment ${status}`,
+      equipment,
+      ownerResponse: {
+        status: equipment.status,
+        message: equipment.reviewNote,
+        reviewedAt: equipment.reviewedAt,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to review equipment", error: error.message });
+  }
+};
+
 // GET ALL EQUIPMENT
 const getAllEquipment = async (req, res) => {
   try {
     const equipment = await equipmentModel
-      .find()
-      .populate("category");
+      .find({ status: "approved", availability: true })
+      .populate("category")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       message: "Equipment fetched successfully",
@@ -49,9 +157,8 @@ const getOneEquipment = async (req, res) => {
       });
     }
 
-    const equipment = await equipmentModel
-      .findById(id)
-      .populate("category");
+    const filter = req.baseUrl.includes("/admin/") ? { _id: id } : { _id: id, status: "approved", availability: true };
+    const equipment = await equipmentModel.findOne(filter).populate("category");
 
     if (!equipment) {
       return res.status(404).json({
@@ -83,7 +190,11 @@ const updateEquipment = async (req, res) => {
     }
 
     // Prevent owner from being changed through this endpoint
-    const { owner, ...updates } = req.body;
+    const updates = { ...req.body };
+    delete updates.owner;
+    delete updates.status;
+    delete updates.reviewNote;
+    delete updates.reviewedAt;
 
     const equipment = await equipmentModel.findByIdAndUpdate(
       id,
@@ -208,6 +319,10 @@ const uploadEquipmentImages = async (req, res) => {
 
 module.exports = {
   createEquipment,
+  getPublishedEquipment,
+  getOwnerEquipment,
+  getAdminEquipment,
+  reviewEquipment,
   getAllEquipment,
   getOneEquipment,
   updateEquipment,
