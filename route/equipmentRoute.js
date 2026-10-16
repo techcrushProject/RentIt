@@ -12,25 +12,29 @@ const {
 } = require("../controller/equipmentController");
 
 const upload = require("../config/multer");
+const protect = require("../middleware/authMiddleware");
+const authorizeRoles = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
-router.post("/create", createEquipment);
+router.post("/create", protect, authorizeRoles("owner"), createEquipment);
 
 router.get("/getall", getAllEquipment);
 
 router.get("/explore", getPublishedEquipment);
 
-router.get("/owner/:ownerId", getOwnerEquipment);
+router.get("/mine", protect, authorizeRoles("owner"), getOwnerEquipment);
 
 router.get("/getone/:id", getOneEquipment);
 
-router.patch("/update/:id", updateEquipment);
+router.patch("/update/:id", protect, authorizeRoles("owner"), updateEquipment);
 
-router.delete("/delete/:id", deleteEquipment);
+router.delete("/delete/:id", protect, authorizeRoles("owner"), deleteEquipment);
 
 router.post(
   "/upload/:id",
+  protect,
+  authorizeRoles("owner"),
   upload.array("images", 5),
   uploadEquipmentImages
 );

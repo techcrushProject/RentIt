@@ -6,13 +6,14 @@ const equipmentModel = require("../model/equipmentModel");
 const createEquipment = async (req, res) => {
   try {
     const {
-      name, description, category, owner, brand, model, condition,
+      name, description, category, brand, model, condition,
       additionalInformation, pricePerDay, rentalDeposit, rentalRules,
       location, availableDate, unavailableDate, handoverMethod, images,
     } = req.body;
 
+    const owner = req.user.id;
     if (!name || !description || !location || !mongoose.Types.ObjectId.isValid(category) || !mongoose.Types.ObjectId.isValid(owner)) {
-      return res.status(400).json({ message: "Name, description, category, owner, and location are required" });
+      return res.status(400).json({ message: "Name, description, category, and location are required" });
     }
     const price = Number(pricePerDay);
     if (!Number.isFinite(price) || price <= 0) {
@@ -62,11 +63,10 @@ const getPublishedEquipment = async (req, res) => {
 };
 
 // Owner dashboard: return only the signed-in owner's records, including the
-// saved admin decision and feedback. The auth layer can set req.user.id; the
-// ownerId query parameter is retained for the current branch's unauthenticated API.
+// saved admin decision and feedback.
 const getOwnerEquipment = async (req, res) => {
   try {
-    const ownerId = req.user?.id || req.params.ownerId || req.query.ownerId;
+    const ownerId = req.user.id;
     if (!mongoose.Types.ObjectId.isValid(ownerId)) {
       return res.status(400).json({ message: "A valid ownerId is required" });
     }
@@ -196,8 +196,8 @@ const updateEquipment = async (req, res) => {
     delete updates.reviewNote;
     delete updates.reviewedAt;
 
-    const equipment = await equipmentModel.findByIdAndUpdate(
-      id,
+    const equipment = await equipmentModel.findOneAndUpdate(
+      { _id: id, owner: req.user.id },
       updates,
       {
         new: true,
@@ -234,7 +234,7 @@ const deleteEquipment = async (req, res) => {
       });
     }
 
-    const equipment = await equipmentModel.findByIdAndDelete(id);
+    const equipment = await equipmentModel.findOneAndDelete({ _id: id, owner: req.user.id });
 
     if (!equipment) {
       return res.status(404).json({
@@ -264,7 +264,7 @@ const uploadEquipmentImages = async (req, res) => {
       });
     }
 
-    const equipment = await equipmentModel.findById(id);
+    const equipment = await equipmentModel.findOne({ _id: id, owner: req.user.id });
 
     if (!equipment) {
       return res.status(404).json({
