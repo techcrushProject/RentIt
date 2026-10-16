@@ -1,10 +1,12 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";
+import env from "./env.js";
 
-dotenv.config();
+/** Connect once at startup. Errors propagate so server.js can exit non-zero. */
+export default async function connectDB() {
+    mongoose.set("strictQuery", true);
+    await mongoose.connect(env.mongoUri, { serverSelectionTimeoutMS: 10000 });
+    // Never log the URI: it contains the database password.
+    console.log("MongoDB connected");
+}
 
-const connectDB = async () => {
-    await mongoose.connect(process.env.MONGO_URI);
-};
-
-export default connectDB;
+export const disconnectDB = () => mongoose.disconnect();

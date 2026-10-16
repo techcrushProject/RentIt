@@ -1,0 +1,12 @@
+{
+  "categories": [
+    {"id":"equipments","name":"Equipments","slug":"equipments"},
+    {"id":"power-tools","name":"Power Tools","slug":"power-tools"},
+    {"id":"properties","name":"Properties","slug":"properties"},
+    {"id":"camera-photography","name":"Camera & Photography","slug":"camera-photography"},
+    {"id":"event-party-items","name":"Event & Party Items","slug":"event-party-items"},
+    {"id":"electronics","name":"Electronics","slug":"electronics"},
+    {"id":"furnitures","name":"Furnitures","slug":"furnitures"},
+    {"id":"more","name":"More","slug":"more"}
+  ]
+}

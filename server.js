@@ -1,35 +1,53 @@
-import express from "express";
-import connectDB from "./config/db.js";
+// Imported first so a bad configuration stops the process with a clear message.
+import env from "./config/env.js";
+import connectDB, { disconnectDB } from "./config/db.js";
+import { createApp } from "./app.js";
 
-import cors from "cors";
+const redactUri = (text) => String(text).replaceAll(env.mongoUri, "[MONGO_URI]");
 
-import authRoutes from "./Routes/authRoutes.js";
-import adminRoutes from "./Routes/adminRoutes.js";
-import kycRoutes from "./Routes/kycRoutes.js";
-import equipmentRoutes from "./Routes/equipmentRoutes.js";
+try {
+    await connectDB();
+} catch (err) {
+    console.error(`Could not connect to MongoDB: ${redactUri(err.message)}`);
+    process.exit(1);
+}
 
-const app = express();
-
-connectDB();
-
-app.use(express.json({ limit: "15mb" }));
-app.use(cors());
-app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/kyc", kycRoutes);
-app.use("/api/equipment", equipmentRoutes);
-
-
-
-const PORT = process.env.PORT || 3000;
-
-app.get("/", (req, res) => {
-    res.send("WELCOME TO BACKEND API")
+const server = createApp().listen(env.port, () => {
+    console.log(`Server running on port ${env.port} (${env.nodeEnv})`);
 });
 
+server.on("error", (err) => {
+    console.error(`Server error: ${err.message}`);
+    process.exit(1);
+});
 
+let shuttingDown = false;
 
+async function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`${signal} received, shutting down`);
 
-app.listen(PORT, () => {
-    console.log(`Server running on PORT: ${PORT}`);
-})
+    // Do not hang forever on a stuck connection; the timer must not keep the process alive by itself.
+    setTimeout(() => {
+        console.error("Shutdown timed out, forcing exit");
+        process.exit(1);
+    }, 10_000).unref();
+
+    try {
+        await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+        await disconnectDB();
+        process.exit(0);
+    } catch (err) {
+        console.error(`Error during shutdown: ${err.message}`);
+        process.exit(1);
+    }
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+process.on("unhandledRejection", (reason) => {
+    console.error("Unhandled promise rejection:", reason instanceof Error ? reason.stack : String(reason));
+    process.exit(1);
+});

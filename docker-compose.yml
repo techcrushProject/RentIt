@@ -1,0 +1,45 @@
+# Local / self-hosted MongoDB for RentIt.
+#
+#   cp .env.example .env      # then replace every CHANGE_ME value
+#   docker compose up -d mongo
+#   docker compose ps         # wait for "healthy"
+#
+# Notes
+#  - Authentication is ON. The root account is only used to bootstrap; the API
+#    connects as the least-privilege app user created by docker/mongo/init.
+#  - The port is published on 127.0.0.1 only. Never publish 27017 to 0.0.0.0.
+#  - Init scripts run ONCE, when the data volume is empty. To re-run them
+#    (this DESTROYS all data):  docker compose down -v
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: rentit-mongo
+    restart: unless-stopped
+    command: ["--auth", "--wiredTigerCacheSizeGB", "0.5"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?Set MONGO_ROOT_USER in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-rentit}
+      # Consumed by docker/mongo/init/01-create-app-user.js
+      MONGO_DB: ${MONGO_DB:-rentit}
+      MONGO_APP_USER: ${MONGO_APP_USER:?Set MONGO_APP_USER in .env}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./docker/mongo/init:/docker-entrypoint-initdb.d:ro
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # `ping` needs no credentials, so no secret ends up in `docker inspect`.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  mongo_data:
+  mongo_config:
